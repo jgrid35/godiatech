@@ -16,18 +16,26 @@ type MovieFile struct {
 	imdbFile string
 }
 
-func main() {
+func importMovies() {
 	movieChan := make(chan MovieFile)
 	quit := make(chan int)
-	var movies []MovieFile
+	db := connectToDatabase()
 	go readSambaFiles(movieChan, quit)
 	for {
 		select {
 		case movie := <-movieChan:
-			movies = append(movies, movie)
+			var movieMetadata MovieMetadata
+			if movie.imdbFile != "" {
+				movieMetadata = getMovieMetadataByID(movie.imdbFile)
+			} else if movie.file != "" {
+				movieMetadata = getMovieMetadataByTitle(movie.file)
+			}
+			fmt.Println("Movie Metadata:", movieMetadata)
+			err := insertMovie(db, movieMetadata)
+			if err != nil {
+				panic(err)
+			}
 		case <-quit:
-			fmt.Println(movies)
-			fmt.Println("Quitting...")
 			return
 		}
 	}
